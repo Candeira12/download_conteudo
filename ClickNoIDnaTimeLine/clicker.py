@@ -17,7 +17,7 @@ def _obter_info_elemento(page, x, y):
     Retorna informações do elemento em (x, y).
     """
     try:
-        script = """
+        script = r"""
         (args) => {
             const { x, y } = args;
             const el = document.elementFromPoint(x, y);
@@ -46,7 +46,7 @@ def _executar_clique_js(page, x, y):
     Clica via JavaScript no ponto (x, y).
     """
     try:
-        script = """
+        script = r"""
         (args) => {
             const { x, y } = args;
             const el = document.elementFromPoint(x, y);
@@ -221,18 +221,24 @@ def clicar_id_com_mouse(page, id_alvo):
         "y": round(y, 2),
         "estrategia": alvo.get("estrategia", "desconhecida"),
         "indice_item": alvo.get("indice_item", -1),
-        "texto_item": (alvo.get("texto_item", "") or "")[:200],
+        "trecho_item": (alvo.get("texto_item", "") or "")[:200],
         "screenshots": {"pre": pre_screenshot, "post": post_screenshot},
-        "elemento_info": elem_info,
-        "requests_capturados": requests_capturados,
-        "request_principal": primeiro_request,
-        "clicou": clicou,
+        "element_from_point": elem_info,
+        "requests_captured": requests_capturados,
+        "request_captured": primeiro_request,
+        "clicked_via_js": clicou,
     }
 
 
-def clicar_com_retry_inteligente(page, id_alvo, max_tentativas=3, delay_ms=800):
+def clicar_com_retry_inteligente(page, id_alvo, max_tentativas=3, delay_entre_ms=800):
     """
     Executa clique com retry automático.
+    
+    Args:
+        page: Página Playwright
+        id_alvo: ID a clicar
+        max_tentativas: Número máximo de tentativas (default: 3)
+        delay_entre_ms: Delay entre tentativas em ms (default: 800)
     """
     ultima_excecao = None
     
@@ -256,13 +262,13 @@ def clicar_com_retry_inteligente(page, id_alvo, max_tentativas=3, delay_ms=800):
             )
             
             if tentativa < max_tentativas:
-                page.wait_for_timeout(delay_ms)
+                page.wait_for_timeout(delay_entre_ms)
         
         except Exception as e:
             ultima_excecao = e
             logger.exception(f"Erro na tentativa {tentativa}: {e}")
             if tentativa < max_tentativas:
-                page.wait_for_timeout(delay_ms)
+                page.wait_for_timeout(delay_entre_ms)
     
     logger.error(f"✗ Falha após {max_tentativas} tentativas")
     
