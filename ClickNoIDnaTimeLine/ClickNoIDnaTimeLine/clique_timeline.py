@@ -17,7 +17,7 @@ from session_keeper import salvar_cookies_sessao, restaurar_cookies_sessao
 logger = logging.getLogger(__name__)
 
 
-def executar_clique_no_id(playwright, id_alvo, cdp_url):
+def executar_clique_no_id(playwright, id_alvo, cdp_url, numero_processo=None):
     """
     Executa clique em um ID da timeline com persistência de sessão.
     
@@ -25,6 +25,7 @@ def executar_clique_no_id(playwright, id_alvo, cdp_url):
         playwright: Instância do Playwright
         id_alvo: ID a clicar
         cdp_url: URL de conexão CDP do navegador
+        numero_processo: Número do processo para uso de cache de localizações
     
     Returns:
         dict com resultado da execução
@@ -45,7 +46,7 @@ def executar_clique_no_id(playwright, id_alvo, cdp_url):
     
     # Verifica existência do item na timeline
     logger.info(f"Localizando item com ID {id_alvo} na timeline...")
-    item = localizar_item_por_id(pagina, id_alvo)
+    item = localizar_item_por_id(pagina, id_alvo, numero_processo=numero_processo)
     if item is None:
         logger.error("executar_clique_no_id: ID %s nao encontrado na timeline", id_alvo)
         raise RuntimeError(f"ID {id_alvo} nao encontrado na timeline.")
