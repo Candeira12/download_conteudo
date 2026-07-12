@@ -66,7 +66,8 @@ def obter_alvo_de_clique_por_id(page, id_alvo):
     
     try:
         dados = page.evaluate(
-            r"""(idAlvo, seletoresOtimizados) => {
+            r"""(args) => {
+            const { idAlvo, seletoresOtimizados } = args;
             const regex = new RegExp(`(^|\\D)${idAlvo.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}(\\D|$)`);
             const itens = Array.from(document.querySelectorAll('.timeline .media'));
 
@@ -151,8 +152,7 @@ def obter_alvo_de_clique_por_id(page, id_alvo):
                 mensagem: `ID ${idAlvo} nao foi encontrado em itens clicaveis da timeline.`,
             };
         }""",
-            id_limpo,
-            seletores,
+            {"idAlvo": id_limpo, "seletoresOtimizados": seletores}
         )
         
         logger.debug(f"Resultado: {str(dados)[:500]}")
