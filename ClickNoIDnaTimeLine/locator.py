@@ -1,6 +1,7 @@
 """
 Locator module - Finds clickable elements by ID in timeline items.
 Handles DOM inspection with caching and multiple fallback strategies.
+Also loads pre-computed element locations from cache for faster lookups.
 """
 import re
 import logging
@@ -15,6 +16,12 @@ from cache_timeline import (
     analisar_estructura_timeline,
     construir_seletores_otimizados,
 )
+
+try:
+    from cache_localizacoes import carregar_localizacoes, obter_documento_por_id
+    CACHE_LOCALIZACOES_DISPONIVEL = True
+except ImportError:
+    CACHE_LOCALIZACOES_DISPONIVEL = False
 
 logger = logging.getLogger(__name__)
 
@@ -177,15 +184,33 @@ def _obter_script_localizacao(id_alvo, seletores_otimizados):
     return script, params
 
 
-def obter_alvo_de_clique_por_id(page, id_alvo):
+def obter_alvo_de_clique_por_id(page, id_alvo, numero_processo=None):
     """
     Localiza o melhor ponto para clicar em um elemento contendo o ID.
     
     Usa cache para otimizar buscas subsequentes.
+    Primeiro tenta usar cache de localizações pré-computadas, depois busca no DOM.
     """
     id_limpo = normalizar_texto(id_alvo)
     if not id_limpo:
         raise ValueError("ID alvo vazio.")
+    
+    # Tenta usar cache de localizações se disponível
+    if CACHE_LOCALIZACOES_DISPONIVEL and numero_processo:
+        try:
+            doc_em_cache = obter_documento_por_id(numero_processo, id_limpo)
+            if doc_em_cache:
+                logger.info(f"✓ Localização encontrada no cache para ID {id_limpo}")
+                return {
+                    "encontrou": True,
+                    "estrategia": "cache-localizacoes",
+                    "indice_item": doc_em_cache.get("indice_item"),
+                    "seletor_css": doc_em_cache.get("seletor_css"),
+                    "texto_item": doc_em_cache.get("titulo", ""),
+                    "dados_adicionais": doc_em_cache
+                }
+        except Exception as cache_error:
+            logger.debug(f"Não foi possível usar cache: {cache_error}")
     
     page_url = page.url
     logger.debug(f"Localizando ID {id_limpo} em {page_url}")
@@ -222,10 +247,12 @@ def obter_alvo_de_clique_por_id(page, id_alvo):
     return dados
 
 
-def localizar_item_por_id(page, id_alvo):
+def localizar_item_por_id(page, id_alvo, numero_processo=None):
     """
     Localiza o elemento DOM do item contendo o ID.
     Usa Playwright query_selector_all (alternativa mais simples).
+    
+    Se numero_processo for fornecido, tenta usar cache primeiro.
     """
     id_limpo = normalizar_texto(id_alvo)
     if not id_limpo:
@@ -233,6 +260,21 @@ def localizar_item_por_id(page, id_alvo):
     
     logger.debug(f"Localizando item com ID: {id_limpo}")
     
+    # Tenta usar cache de localizações se disponível
+    if CACHE_LOCALIZACOES_DISPONIVEL and numero_processo:
+        try:
+            doc_em_cache = obter_documento_por_id(numero_processo, id_limpo)
+            if doc_em_cache:
+                indice = doc_em_cache.get("indice_item")
+                if indice is not None:
+                    itens = page.query_selector_all(".timeline .media")
+                    if 0 <= indice < len(itens):
+                        logger.info(f"✓ Item encontrado no cache (índice: {indice})")
+                        return itens[indice]
+        except Exception as cache_error:
+            logger.debug(f"Não foi possível usar cache: {cache_error}")
+    
+    # Busca no DOM
     itens = page.query_selector_all(".timeline .media")
     for item in itens:
         try:
